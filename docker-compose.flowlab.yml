@@ -1,0 +1,84 @@
+services:
+  flowlab-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: flowlab-app
+    restart: unless-stopped
+    ports:
+      - '8080:80'
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - AP_CONTAINER_TYPE=APP
+      - AP_ENVIRONMENT=production
+      - AP_ALLOW_OPEN_SIGN_UP=true
+      - AP_POSTGRES_DATABASE=flowlab
+      - AP_POSTGRES_HOST=postgres
+      - AP_POSTGRES_PORT=5432
+      - AP_POSTGRES_USERNAME=flowlab
+      - AP_POSTGRES_PASSWORD=flowlab_secret
+      - AP_REDIS_HOST=redis
+      - AP_REDIS_PORT=6379
+      - AP_JWT_SECRET=flowlab-jwt-secret-replace-with-random-in-prod
+      - AP_FRONTEND_URL=http://localhost:8080
+    volumes:
+      - ./cache:/usr/src/app/cache
+    networks:
+      - flowlab-net
+
+  flowlab-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - flowlab-app
+    environment:
+      - AP_CONTAINER_TYPE=WORKER
+      - AP_ENVIRONMENT=production
+      - AP_ALLOW_OPEN_SIGN_UP=true
+      - AP_POSTGRES_DATABASE=flowlab
+      - AP_POSTGRES_HOST=postgres
+      - AP_POSTGRES_PORT=5432
+      - AP_POSTGRES_USERNAME=flowlab
+      - AP_POSTGRES_PASSWORD=flowlab_secret
+      - AP_REDIS_HOST=redis
+      - AP_REDIS_PORT=6379
+      - AP_JWT_SECRET=flowlab-jwt-secret-replace-with-random-in-prod
+      - AP_FRONTEND_URL=http://localhost:8080
+    volumes:
+      - ./cache:/usr/src/app/cache
+    networks:
+      - flowlab-net
+
+  postgres:
+    image: 'pgvector/pgvector:0.8.0-pg14'
+    container_name: flowlab-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=flowlab
+      - POSTGRES_USER=flowlab
+      - POSTGRES_PASSWORD=flowlab_secret
+    volumes:
+      - flowlab_postgres_data:/var/lib/postgresql/data
+    networks:
+      - flowlab-net
+
+  redis:
+    image: 'redis:7.0.7'
+    container_name: flowlab-redis
+    restart: unless-stopped
+    volumes:
+      - flowlab_redis_data:/data
+    networks:
+      - flowlab-net
+
+volumes:
+  flowlab_postgres_data:
+  flowlab_redis_data:
+
+networks:
+  flowlab-net:
+    driver: bridge
