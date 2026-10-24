@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 
 const ActivepiecesWordmark = ({ className }: { className?: string }) => (
   <svg
-    className={cn('h-full w-auto text-foreground', className)}
+    className={cn('h-full w-auto text-gray-12', className)}
     viewBox="0 0 160 36"
     fill="none"
     role="img"

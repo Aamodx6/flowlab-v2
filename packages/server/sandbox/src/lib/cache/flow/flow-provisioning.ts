@@ -85,7 +85,7 @@ function buildMissingPieceFailedStep({ flowVersion, missingPiece }: BuildMissing
     return {
         name: step.name,
         displayName: step.displayName,
-        message: `The piece ${missingPiece.pieceName}@${missingPiece.pieceVersion} is not installed on this instance or has been hidden by an admin, so the flow was turned off. Install the missing piece version or update the step to an installed version, then publish and re-enable the flow.`,
+        message: `The piece ${missingPiece.pieceName.replace(/^@activepieces\/(?:piece-)?/, '')}@${missingPiece.pieceVersion} is not installed on this instance or has been hidden by an admin, so the flow was turned off. Install the missing piece version or update the step to an installed version, then publish and re-enable the flow.`,
     }
 }
 
