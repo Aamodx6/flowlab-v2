@@ -129,6 +129,18 @@ export const setupServer = async (): Promise<FastifyInstance> => {
             }
             return reply.sendFile('index.html')
         }
+        if (request.url === '/' || request.url === '') {
+            const accept = request.headers['accept'] ?? ''
+            if (accept.includes('text/html')) {
+                return reply.redirect('http://localhost:4200')
+            }
+            return reply.send({
+                name: 'FlowLab API',
+                status: 'online',
+                frontendUrl: 'http://localhost:4200',
+                docsUrl: '/api/v1/docs',
+            })
+        }
         return reply.code(404).send({ statusCode: 404, error: 'Not Found', message: 'Route not found' })
     })
 
