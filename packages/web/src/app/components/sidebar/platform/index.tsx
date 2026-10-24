@@ -1,0 +1,297 @@
+import { ApEdition, ApFlagId } from '@activepieces/shared';
+import { t } from 'i18next';
+
+import { McpSvg } from '@/assets/img/custom/mcp';
+import { ChartLineIcon } from '@/components/icons/chart-line';
+import { FileHeartIcon } from '@/components/icons/file-heart';
+import { FileJson2Icon } from '@/components/icons/file-json2';
+import { FrameIcon } from '@/components/icons/frame';
+import { KeyRoundIcon } from '@/components/icons/key-round';
+import { LayoutGridIcon } from '@/components/icons/layout-grid';
+import { LogInIcon } from '@/components/icons/log-in';
+import { MousePointerClickIcon } from '@/components/icons/mouse-pointer-click';
+import { PuzzleIcon } from '@/components/icons/puzzle';
+import { ReceiptIcon } from '@/components/icons/receipt';
+import { ServerIcon } from '@/components/icons/server';
+import { SettingsIcon } from '@/components/icons/settings';
+import { Settings2Icon } from '@/components/icons/settings2';
+import { SparklesIcon } from '@/components/icons/sparkles';
+import { SquareDashedBottomCodeIcon } from '@/components/icons/square-dashed-bottom-code';
+import { UnplugIcon } from '@/components/icons/unplug';
+import { UsersIcon } from '@/components/icons/users';
+import {
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+} from '@/components/ui/sidebar-shadcn';
+import { PLATFORM_FEATURES } from '@/features/billing';
+import { flagsHooks } from '@/hooks/flags-hooks';
+import { platformHooks } from '@/hooks/platform-hooks';
+
+import { ApSidebarItem, SidebarItemType } from '../ap-sidebar-item';
+
+export function PlatformNav() {
+  const { platform } = platformHooks.useCurrentPlatform();
+  const { data: edition } = flagsHooks.useFlag<ApEdition>(ApFlagId.EDITION);
+
+  const groups: { label: string; items: PlatformNavItem[] }[] = [
+    {
+      label: t('Platform'),
+      items: [
+        {
+          to: '/platform/projects',
+          label: t('Projects'),
+          icon: LayoutGridIcon,
+        },
+        {
+          to: '/platform/users',
+          label: t('Users'),
+          icon: UsersIcon,
+          subItems: [
+            { to: '/platform/users', label: t('Members'), end: true },
+            {
+              to: '/platform/users/roles',
+              label: t('Roles & Access'),
+              locked: !platform.plan.projectRolesEnabled,
+              tier: PLATFORM_FEATURES.projectRoles.tier,
+            },
+          ],
+        },
+        {
+          to: '/platform/connections',
+          label: t('Connections'),
+          icon: UnplugIcon,
+          subItems: [
+            { to: '/platform/connections', label: t('All'), end: true },
+            {
+              to: '/platform/connections/global',
+              label: t('Global Connections'),
+              locked: !platform.plan.globalConnectionsEnabled,
+              tier: PLATFORM_FEATURES.globalConnections.tier,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      label: t('Catalogue'),
+      items: [
+        {
+          to: '/platform/pieces',
+          label: t('Pieces'),
+          icon: PuzzleIcon,
+          subItems: [
+            { to: '/platform/pieces', label: t('Pieces'), end: true },
+            {
+              to: '/platform/pieces/piece-sets',
+              label: t('Piece Sets'),
+              locked: !platform.plan.managePiecesEnabled,
+              tier: PLATFORM_FEATURES.pieces.tier,
+            },
+          ],
+        },
+        {
+          to: '/platform/templates',
+          label: t('Templates'),
+          icon: LayoutGridIcon,
+          locked: !platform.plan.manageTemplatesEnabled,
+          tier: PLATFORM_FEATURES.templates.tier,
+        },
+        {
+          to: '/platform/ai',
+          label: t('AI Center'),
+          icon: SparklesIcon,
+          locked: !platform.plan.aiProvidersEnabled,
+          tier: PLATFORM_FEATURES.aiProviders.tier,
+          subItems:
+            edition === ApEdition.COMMUNITY
+              ? undefined
+              : [
+                  { to: '/platform/ai', label: t('Providers'), end: true },
+                  {
+                    to: '/platform/ai/capabilities',
+                    label: t('Capabilities'),
+                  },
+                ],
+        },
+      ],
+    },
+    {
+      label: t('Security'),
+      items: [
+        {
+          to: '/platform/sso',
+          label: t('Authentication'),
+          icon: LogInIcon,
+          locked: !platform.plan.ssoEnabled,
+          tier: PLATFORM_FEATURES.sso.tier,
+        },
+        {
+          to: '/platform/secret-managers',
+          label: t('Secret Managers'),
+          icon: KeyRoundIcon,
+          locked: !platform.plan.secretManagersEnabled,
+          tier: PLATFORM_FEATURES.secretManagers.tier,
+        },
+        {
+          to: '/platform/audit-log',
+          label: t('Audit Logs'),
+          icon: SquareDashedBottomCodeIcon,
+          subItems: [
+            {
+              to: '/platform/audit-log',
+              label: t('Events'),
+              end: true,
+              locked: !platform.plan.auditLogEnabled,
+              tier: PLATFORM_FEATURES.auditLogs.tier,
+            },
+            {
+              to: '/platform/audit-log/streaming',
+              label: t('Event Streaming'),
+              locked: !platform.plan.eventStreamingEnabled,
+              tier: PLATFORM_FEATURES.eventStreaming.tier,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      label: t('Developers'),
+      items: [
+        {
+          to: '/platform/api-keys',
+          label: t('API Keys'),
+          icon: FileJson2Icon,
+          locked: !platform.plan.apiKeysEnabled,
+          tier: PLATFORM_FEATURES.apiKeys.tier,
+        },
+        {
+          to: '/platform/embedding',
+          label: t('Embedding'),
+          icon: FrameIcon,
+          locked: !platform.plan.embeddingEnabled,
+          tier: PLATFORM_FEATURES.embedding.tier,
+        },
+        {
+          to: '/platform/mcp',
+          label: t('MCP Server'),
+          icon: McpSvg,
+          subItems: [
+            { to: '/platform/mcp', label: t('Tools'), end: true },
+            { to: '/platform/mcp/activity', label: t('Activity') },
+          ],
+        },
+      ],
+    },
+    {
+      label: t('Operations'),
+      items: [
+        {
+          to: '/platform/workers',
+          label: t('Workers'),
+          icon: ServerIcon,
+          subItems: [
+            {
+              to: '/platform/workers',
+              label: t('Health'),
+              end: true,
+            },
+            {
+              to: '/platform/workers/groups',
+              label: t('Worker groups'),
+              locked: !platform.plan.workerGroupsEnabled,
+            },
+          ],
+        },
+        {
+          to: '/platform/health',
+          label: t('Health'),
+          icon: FileHeartIcon,
+          subItems: [
+            {
+              to: '/platform/health',
+              label: t('System Health'),
+              end: true,
+            },
+            {
+              to: '/platform/health/runs',
+              label: t('Runs Health'),
+            },
+            {
+              to: '/platform/health/queue',
+              label: t('Queue Health'),
+            },
+          ],
+        },
+        {
+          to: '/platform/triggers',
+          label: t('Triggers'),
+          icon: MousePointerClickIcon,
+        },
+      ],
+    },
+    {
+      label: t('Account'),
+      items: [
+        {
+          to: '/platform/general',
+          label: t('General'),
+          icon: SettingsIcon,
+        },
+        {
+          to: '/platform/billing',
+          label: t('Billing & subscription'),
+          icon: ReceiptIcon,
+          locked: edition === ApEdition.COMMUNITY,
+        },
+        {
+          to: '/platform/usage',
+          label: t('Usage'),
+          icon: ChartLineIcon,
+          locked: edition === ApEdition.COMMUNITY,
+        },
+        ...(edition === ApEdition.CLOUD
+          ? []
+          : [
+              {
+                to: '/platform/configurations',
+                label: t('Configurations'),
+                icon: Settings2Icon,
+              },
+            ]),
+      ],
+    },
+  ];
+
+  return (
+    <>
+      {groups.map((group) => (
+        <SidebarGroup key={group.label} className="py-1">
+          <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {group.items.map((item) => (
+                <ApSidebarItem
+                  type="link"
+                  key={item.to}
+                  to={item.to}
+                  label={item.label}
+                  icon={item.icon}
+                  locked={item.locked}
+                  tier={item.tier}
+                  subItems={item.subItems}
+                />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      ))}
+    </>
+  );
+}
+
+type PlatformNavItem = Pick<
+  SidebarItemType,
+  'to' | 'label' | 'icon' | 'locked' | 'tier' | 'subItems'
+>;

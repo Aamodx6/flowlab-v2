@@ -1,0 +1,325 @@
+import { omit } from '@activepieces/core-utils';
+import {
+  ActionPreviewEvent,
+  ActionReceiptEvent,
+  BatchProgressData,
+  BuildPlanEvent,
+  FileProducedEvent,
+  ImageGeneratedEvent,
+  SubagentActivity,
+} from '@activepieces/shared';
+import { StoreApi, create } from 'zustand';
+
+import { chatApi } from './chat-api';
+import {
+  MultiQuestion,
+  RawMultiQuestion,
+  normalizeQuestion,
+} from './chat-store-types';
+import { AnyToolPart, ChatUIMessage, chatPartUtils } from './chat-types';
+
+function sendApprovalDecision({
+  gateId,
+  approved,
+  payload,
+}: {
+  gateId: string;
+  approved: boolean;
+  payload?: Record<string, unknown>;
+}): void {
+  void chatApi.approveToolCall({ gateId, approved, payload });
+}
+
+function extractQuestionsFromInput(part: AnyToolPart | null): MultiQuestion[] {
+  if (!part) return [];
+  const input = part.input as { questions?: RawMultiQuestion[] } | undefined;
+  return (input?.questions ?? []).map(normalizeQuestion);
+}
+
+function isNotDismissed(
+  part: AnyToolPart | null,
+  state: ChatStoreState,
+): part is AnyToolPart {
+  if (!part) return false;
+  return !state.dismissedGateIds[chatPartUtils.getToolCallId(part)];
+}
+
+export type ToolCallMeta = {
+  batchProgress?: BatchProgressData;
+  actionPreview?: ActionPreviewEvent;
+  actionReceipt?: ActionReceiptEvent;
+  image?: ImageGeneratedEvent;
+  files?: FileProducedEvent[];
+  subagent?: SubagentActivity;
+};
+
+export type BuildState = BuildPlanEvent;
+
+export type ChatStoreState = {
+  conversationId: string | null;
+  quickReplies: string[];
+  offerRecurringAutomation: boolean;
+  toolCallMeta: Record<string, ToolCallMeta>;
+  builds: Record<string, BuildState>;
+  dismissedGateIds: Record<string, true>;
+  lastDismissedFormId: string | null;
+  taskPanelToolCallId: string | null;
+  taskPanelAutoOpen: boolean;
+  chatAreaWidth: number;
+
+  setConversationId: (conversationId: string | null) => void;
+  approveGate: (gateId: string, payload?: Record<string, unknown>) => void;
+  rejectGate: (gateId: string) => void;
+  dismissGate: (gateId: string) => void;
+  dismissForm: (messageId: string) => void;
+  resetInteractions: () => void;
+  resetBuilds: () => void;
+  openTaskPanel: (toolCallId: string) => void;
+  setChatAreaWidth: (width: number) => void;
+  closeTaskPanel: () => void;
+};
+
+export type ChatStore = ReturnType<typeof createChatStore>;
+
+function dismissAndCleanup(
+  prev: ChatStoreState,
+  gateId: string,
+): Partial<ChatStoreState> {
+  return {
+    dismissedGateIds: { ...prev.dismissedGateIds, [gateId]: true },
+    toolCallMeta: omit(prev.toolCallMeta, [gateId]),
+  };
+}
+
+export const createChatStore = () =>
+  create<ChatStoreState>((set) => ({
+    conversationId: null,
+    quickReplies: [],
+    offerRecurringAutomation: false,
+    toolCallMeta: {},
+    builds: {},
+    dismissedGateIds: {},
+    lastDismissedFormId: null,
+    taskPanelToolCallId: null,
+    taskPanelAutoOpen: true,
+    chatAreaWidth: 0,
+
+    approveGate: (gateId: string, payload?: Record<string, unknown>) => {
+      set((prev) => dismissAndCleanup(prev, gateId));
+      sendApprovalDecision({ gateId, approved: true, payload });
+    },
+    rejectGate: (gateId: string) => {
+      set((prev) => dismissAndCleanup(prev, gateId));
+      sendApprovalDecision({ gateId, approved: false });
+    },
+    dismissGate: (gateId: string) => {
+      set((prev) => dismissAndCleanup(prev, gateId));
+    },
+    dismissForm: (messageId: string) => {
+      set({ lastDismissedFormId: messageId });
+    },
+    setConversationId: (conversationId: string | null) => {
+      set((prev) =>
+        prev.conversationId === conversationId
+          ? { conversationId }
+          : { conversationId, taskPanelAutoOpen: true },
+      );
+    },
+    resetInteractions: () => {
+      set({
+        quickReplies: [],
+        offerRecurringAutomation: false,
+        toolCallMeta: {},
+        dismissedGateIds: {},
+        lastDismissedFormId: null,
+        taskPanelToolCallId: null,
+      });
+    },
+    resetBuilds: () => {
+      set({ builds: {} });
+    },
+    openTaskPanel: (toolCallId: string) => {
+      set({ taskPanelToolCallId: toolCallId });
+    },
+    closeTaskPanel: () => {
+      set({ taskPanelToolCallId: null, taskPanelAutoOpen: false });
+    },
+    setChatAreaWidth: (width: number) => {
+      set({ chatAreaWidth: width });
+    },
+  }));
+
+function selectTaskPanelDocks(state: ChatStoreState): boolean {
+  return state.chatAreaWidth >= TASK_PANEL_MIN_CHAT_AREA;
+}
+
+function selectActiveDisplayTool({
+  state,
+  lastAssistantMessage,
+}: {
+  state: ChatStoreState;
+  lastAssistantMessage: ChatUIMessage | undefined;
+}): AnyToolPart | null {
+  const part = chatPartUtils.findLastToolPart({
+    message: lastAssistantMessage,
+    predicate: (name, p) =>
+      chatPartUtils.isDisplayTool(name) &&
+      name !== 'ap_show_quick_replies' &&
+      (p.state === 'input-streaming' || p.state === 'input-available'),
+  });
+  return isNotDismissed(part, state) ? part : null;
+}
+
+function selectPendingActionPreview({
+  state,
+  lastAssistantMessage,
+}: {
+  state: ChatStoreState;
+  lastAssistantMessage: ChatUIMessage | undefined;
+}): ActionPreviewEvent | null {
+  const part = chatPartUtils.findLastToolPart({
+    message: lastAssistantMessage,
+    predicate: (_name, p) => {
+      if (p.state !== 'input-available') return false;
+      const id = chatPartUtils.getToolCallId(p);
+      return !!id && !!state.toolCallMeta[id]?.actionPreview;
+    },
+  });
+  if (!isNotDismissed(part, state)) return taskActionPreview(state);
+  const toolCallId = chatPartUtils.getToolCallId(part);
+  return state.toolCallMeta[toolCallId]?.actionPreview ?? null;
+}
+
+function taskActionPreview(state: ChatStoreState): ActionPreviewEvent | null {
+  const metas = Object.values(state.toolCallMeta);
+  const taskRunning = metas.some((meta) => meta.subagent?.status === 'running');
+  if (!taskRunning) return null;
+  const waiting = metas.find(
+    (meta) =>
+      meta.actionPreview?.taskTitle !== undefined &&
+      meta.actionReceipt === undefined &&
+      !state.dismissedGateIds[meta.actionPreview.toolCallId],
+  );
+  return waiting?.actionPreview ?? null;
+}
+
+function selectActiveQuestions({
+  state,
+  lastAssistantMessage,
+}: {
+  state: ChatStoreState;
+  lastAssistantMessage: ChatUIMessage | undefined;
+}): MultiQuestion[] {
+  const activeTool = selectActiveDisplayTool({ state, lastAssistantMessage });
+  if (
+    activeTool &&
+    chatPartUtils.getToolPartName(activeTool) === 'ap_show_questions'
+  ) {
+    return extractQuestionsFromInput(activeTool);
+  }
+  const historyPart = chatPartUtils.findLastToolPart({
+    message: lastAssistantMessage,
+    predicate: (name, p) =>
+      name === 'ap_show_questions' && p.state !== 'output-available',
+  });
+  return extractQuestionsFromInput(historyPart);
+}
+
+function selectHasActiveForm({
+  state,
+  lastAssistantMessage,
+}: {
+  state: ChatStoreState;
+  lastAssistantMessage: ChatUIMessage | undefined;
+}): boolean {
+  const questions = selectActiveQuestions({ state, lastAssistantMessage });
+  if (questions.length === 0) return false;
+  const activeTool = selectActiveDisplayTool({ state, lastAssistantMessage });
+  if (
+    activeTool &&
+    chatPartUtils.getToolPartName(activeTool) === 'ap_show_questions'
+  ) {
+    return true;
+  }
+  return (
+    !!lastAssistantMessage &&
+    lastAssistantMessage.id !== state.lastDismissedFormId
+  );
+}
+
+function selectHasBlockingCard({
+  state,
+  lastAssistantMessage,
+}: {
+  state: ChatStoreState;
+  lastAssistantMessage: ChatUIMessage | undefined;
+}): boolean {
+  const part = chatPartUtils.findLastToolPart({
+    message: lastAssistantMessage,
+    predicate: (name, p) => {
+      if (p.state !== 'input-available') return false;
+      const id = chatPartUtils.getToolCallId(p);
+      if (state.dismissedGateIds[id]) return false;
+      if (chatPartUtils.isDisplayTool(name) && name !== 'ap_show_quick_replies')
+        return true;
+      return !!state.toolCallMeta[id]?.actionPreview;
+    },
+  });
+  return part !== null || taskActionPreview(state) !== null;
+}
+
+function selectBatchProgress({
+  state,
+  toolCallId,
+}: {
+  state: ChatStoreState;
+  toolCallId: string;
+}): BatchProgressData | undefined {
+  return state.toolCallMeta[toolCallId]?.batchProgress;
+}
+
+function selectBuildById({
+  state,
+  buildId,
+}: {
+  state: ChatStoreState;
+  buildId: string;
+}): BuildState | undefined {
+  return state.builds[buildId];
+}
+
+function mergeBuildPlan({
+  builds,
+  event,
+}: {
+  builds: Record<string, BuildState>;
+  event: BuildPlanEvent;
+}): Record<string, BuildState> {
+  const existing = builds[event.buildId];
+  if (existing && existing.updatedAt > event.updatedAt) {
+    return builds;
+  }
+  return {
+    ...builds,
+    [event.buildId]: event,
+  };
+}
+
+export const chatStoreSelectors = {
+  activeDisplayTool: selectActiveDisplayTool,
+  pendingActionPreview: selectPendingActionPreview,
+  activeQuestions: selectActiveQuestions,
+  hasActiveForm: selectHasActiveForm,
+  hasBlockingCard: selectHasBlockingCard,
+  batchProgress: selectBatchProgress,
+  buildById: selectBuildById,
+  taskPanelDocks: selectTaskPanelDocks,
+};
+
+const TASK_PANEL_MIN_CHAT_AREA = 1024;
+
+export const chatBuildUtils = {
+  mergeBuildPlan,
+};
+
+export type SetChatStore = StoreApi<ChatStoreState>['setState'];

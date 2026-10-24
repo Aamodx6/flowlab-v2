@@ -1,0 +1,251 @@
+import {
+  SECRET_MANAGER_PROVIDERS_METADATA,
+  SecretManagerConnectionScope,
+  SecretManagerConnectionWithStatus,
+} from '@activepieces/shared';
+import { ColumnDef } from '@tanstack/react-table';
+import { t } from 'i18next';
+import {
+  KeyRound,
+  Pencil,
+  RefreshCcw,
+  Trash,
+  Globe,
+  Activity,
+} from 'lucide-react';
+
+import {
+  AdminDataTable,
+  AdminPage,
+  AdminPageHeader,
+  StatusDot,
+  adminPageResources,
+} from '@/app/components/admin';
+import { AnimatedIconButton } from '@/components/custom/animated-icon-button';
+import { RowDataWithActions } from '@/components/custom/data-table';
+import { DataTableColumnHeader } from '@/components/custom/data-table/data-table-column-header';
+import { ConfirmationDeleteDialog } from '@/components/custom/delete-dialog';
+import { PlusIcon } from '@/components/icons/plus';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { PieceIcon } from '@/features/pieces';
+import { secretManagersHooks } from '@/features/secret-managers';
+import { platformHooks } from '@/hooks/platform-hooks';
+import { AdminControl, adminControl } from '@/lib/admin-control';
+
+import { sampleData } from '../../sample-data';
+
+import AddEditSecretManagerConnectionDialog from './connect-secret-manager-dialog';
+
+const SecretManagersPage = () => {
+  const { platform } = platformHooks.useCurrentPlatform();
+  const {
+    data: connections,
+    isLoading: isLoadingConnections,
+    isError: isConnectionsError,
+    refetch: refetchConnections,
+  } = secretManagersHooks.useListSecretManagerConnections({
+    listForPlatform: true,
+  });
+  const { mutate: deleteConnection } =
+    secretManagersHooks.useDeleteSecretManagerConnection();
+
+  const isLoading = isLoadingConnections;
+
+  const isSample = !platform.plan.secretManagersEnabled;
+  const rows = isSample ? sampleData.secretManagers() : connections;
+  const page = rows ? { data: rows, next: null, previous: null } : undefined;
+
+  const columns: ColumnDef<
+    RowDataWithActions<SecretManagerConnectionWithStatus>,
+    unknown
+  >[] = [
+    {
+      accessorKey: 'name',
+      size: 240,
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t('Name')}
+          icon={KeyRound}
+        />
+      ),
+      cell: ({ row }) => {
+        const provider = SECRET_MANAGER_PROVIDERS_METADATA.find(
+          (p) => p.id === row.original.providerId,
+        );
+        return (
+          <div className="flex items-center gap-2 w-fit">
+            <PieceIcon
+              size="md"
+              border={true}
+              displayName={provider?.name}
+              logoUrl={provider?.logo}
+              showTooltip={true}
+            />
+            <span>{row.original.name}</span>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'scope',
+      size: 100,
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t('Scope')}
+          icon={Globe}
+        />
+      ),
+      cell: ({ row }) => {
+        const connection = row.original;
+        if (connection.scope === SecretManagerConnectionScope.PLATFORM) {
+          return <Badge variant="outline">{t('Platform')}</Badge>;
+        }
+        return <Badge variant="outline">{t('Project')}</Badge>;
+      },
+    },
+    {
+      accessorKey: 'connection',
+      size: 100,
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t('Status')}
+          icon={Activity}
+        />
+      ),
+      cell: ({ row }) => {
+        const { configured, connected } = row.original.connection;
+        if (!configured) {
+          return <StatusDot tone="neutral">{t('Not configured')}</StatusDot>;
+        }
+        if (connected) {
+          return <StatusDot tone="success">{t('Connected')}</StatusDot>;
+        }
+        return <StatusDot tone="danger">{t('Disconnected')}</StatusDot>;
+      },
+    },
+    {
+      id: 'actions',
+      cell: ({ row }) => {
+        const connection = row.original;
+        return (
+          <div className="flex items-center gap-1 justify-end">
+            <AddEditSecretManagerConnectionDialog connection={connection}>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={t('Edit')}
+                {...adminControl(
+                  AdminControl.SECRET_MANAGERS_CONNECTION_EDIT_OPEN,
+                )}
+              >
+                <Pencil className="size-4" />
+              </Button>
+            </AddEditSecretManagerConnectionDialog>
+            <SecretManagerClearCacheButton connection={connection} />
+            <ConfirmationDeleteDialog
+              title={t('Delete Connection')}
+              message={t(
+                'Are you sure you want to delete this secret manager connection?',
+              )}
+              warning={t(
+                'Deleting this secret manager connection will break all flows/app connections using it.',
+              )}
+              entityName={connection.name}
+              controlId={AdminControl.SECRET_MANAGERS_CONNECTION_DELETE_CONFIRM}
+              mutationFn={async () => deleteConnection(connection.id)}
+            >
+              <div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={t('Delete')}
+                      {...adminControl(
+                        AdminControl.SECRET_MANAGERS_CONNECTION_DELETE_OPEN,
+                      )}
+                    >
+                      <Trash className="size-4 text-danger-11" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('Delete')}</TooltipContent>
+                </Tooltip>
+              </div>
+            </ConfirmationDeleteDialog>
+          </div>
+        );
+      },
+    },
+  ];
+
+  return (
+    <AdminPage>
+      <AdminPageHeader
+        title={t('Secret Managers')}
+        description={t('Manage Secret Manager connections')}
+        resources={adminPageResources.secretManagers}
+      >
+        <AddEditSecretManagerConnectionDialog>
+          <AnimatedIconButton
+            icon={PlusIcon}
+            iconSize={16}
+            {...adminControl(AdminControl.SECRET_MANAGERS_CONNECTION_OPEN)}
+          >
+            {t('New Connection')}
+          </AnimatedIconButton>
+        </AddEditSecretManagerConnectionDialog>
+      </AdminPageHeader>
+      <AdminDataTable
+        emptyStateTextTitle={t('No connections found')}
+        emptyStateTextDescription={t(
+          'Add a secret manager connection to manage your secrets',
+        )}
+        emptyStateIcon={<KeyRound />}
+        columns={columns}
+        page={page}
+        isLoading={isSample ? false : isLoading}
+        isError={isSample ? false : isConnectionsError}
+        errorStateEntity={t('secret managers')}
+        onRetry={refetchConnections}
+        hidePagination={true}
+      />
+    </AdminPage>
+  );
+};
+
+export default SecretManagersPage;
+
+const SecretManagerClearCacheButton = ({
+  connection,
+}: {
+  connection: SecretManagerConnectionWithStatus;
+}) => {
+  const { mutate: clearCache, isPending: isClearingCache } =
+    secretManagersHooks.useClearCache();
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          loading={isClearingCache}
+          aria-label={t('Clear Cache')}
+          onClick={() => clearCache(connection.id)}
+          {...adminControl(AdminControl.SECRET_MANAGERS_CACHE_RUN)}
+        >
+          <RefreshCcw className="size-4" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{t('Clear Cache')}</TooltipContent>
+    </Tooltip>
+  );
+};

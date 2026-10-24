@@ -1,0 +1,79 @@
+import {
+    DedupeStrategy,
+    Polling,
+    pollingHelper,
+} from '@activepieces/pieces-common';
+import {
+  AppConnectionValueForAuthProperty,
+    createTrigger,
+    StaticPropsValue,
+    TriggerStrategy,
+} from '@activepieces/pieces-framework';
+import dayjs from 'dayjs';
+import { microsoft365PlannerAuth } from '../auth';
+import { microsoft365PlannerApi } from '../common/api';
+import { microsoft365PlannerProps } from '../common/props';
+import { microsoft365PlannerTaskOutputSchema } from '../output-schemas';
+
+const props = {
+  planId: microsoft365PlannerProps.planId({ required: true }),
+};
+
+const polling: Polling<
+  AppConnectionValueForAuthProperty<typeof microsoft365PlannerAuth>,
+  StaticPropsValue<typeof props>
+> = {
+  strategy: DedupeStrategy.TIMEBASED,
+  items: async ({ auth, propsValue: { planId } }) => {
+    if (!planId) {
+      return [];
+    }
+    const user = await microsoft365PlannerApi.getUser({ auth });
+    if (!user || !user.id) {
+      throw new Error('Unable to fetch authenticated user details.');
+    }
+    const items = await microsoft365PlannerApi.listTasks({ auth, planId });
+    return items
+      .filter((item) => {
+        const userId = String(user.id);
+        return (
+          item.assignments &&
+          Object.prototype.hasOwnProperty.call(item.assignments, userId)
+        );
+      })
+      .map((item) => ({
+        epochMilliSeconds: dayjs(item.createdDateTime).valueOf(),
+        data: item,
+      }));
+  },
+};
+
+export const newTaskAssignedToUserTrigger = createTrigger({
+  auth: microsoft365PlannerAuth,
+  name: 'newTaskAssignedToUser',
+  outputSchema: microsoft365PlannerTaskOutputSchema,
+  classification: 'READ',
+  displayName: 'New Task Assigned to User',
+  description:
+    'Triggers when a Task is assigned to the authenticated user in Microsoft 365 Planner.',
+  aiMetadata: {
+    description: 'Fires when a task within a specified Planner plan is assigned to the authenticated (connected) user. Polls periodically and emits each new task in that plan where the current user is among the assignees.',
+  },
+  props,
+  sampleData: {},
+  type: TriggerStrategy.POLLING,
+  async test(context) {
+    return await pollingHelper.test(polling, context);
+  },
+  async onEnable(context) {
+    await pollingHelper.onEnable(polling, context);
+  },
+
+  async onDisable(context) {
+    await pollingHelper.onDisable(polling, context);
+  },
+
+  async run(context) {
+    return await pollingHelper.poll(polling, context);
+  },
+});

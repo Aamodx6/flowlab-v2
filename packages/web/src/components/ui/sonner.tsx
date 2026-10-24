@@ -1,0 +1,68 @@
+'use client';
+
+import {
+  CircleCheckIcon,
+  InfoIcon,
+  Loader2Icon,
+  OctagonXIcon,
+  TriangleAlertIcon,
+} from 'lucide-react';
+import { Toaster as Sonner, toast, type ToasterProps } from 'sonner';
+
+import { useTheme } from '@/components/providers/theme-provider';
+
+export const INTERNAL_ERROR_MESSAGE =
+  'An unexpected error occurred. Please try again in a moment.';
+
+export function internalErrorToast() {
+  console.error('internalErrorToast', INTERNAL_ERROR_MESSAGE);
+  toast.error('Something went wrong', {
+    description: INTERNAL_ERROR_MESSAGE,
+    duration: 3000,
+  });
+}
+
+function Toaster({ ...props }: ToasterProps) {
+  const { resolvedTheme } = useTheme();
+
+  return (
+    <Sonner
+      theme={resolvedTheme}
+      className="group"
+      expand={true}
+      toastOptions={{
+        classNames: {
+          toast: `
+            data-[type=error]:text-danger-11!
+            data-[type=warning]:text-warning-11!
+            data-[type=success]:text-success-11!
+          `,
+          description: `
+            data-[type=error]:text-danger-11!
+            data-[type=warning]:text-warning-11!
+            data-[type=success]:text-success-11!
+          `,
+        },
+        descriptionClassName: 'text-inherit!',
+      }}
+      icons={{
+        success: <CircleCheckIcon className="size-4" />,
+        info: <InfoIcon className="size-4" />,
+        warning: <TriangleAlertIcon className="size-4" />,
+        error: <OctagonXIcon className="size-4" />,
+        loading: <Loader2Icon className="size-4 animate-spin" />,
+      }}
+      style={
+        {
+          '--normal-text': 'var(--gray-12)',
+          '--normal-bg': 'var(--panel)',
+          '--normal-border': 'var(--gray-6)',
+          '--border-radius': 'var(--radius-xl)',
+        } as React.CSSProperties
+      }
+      {...props}
+    />
+  );
+}
+
+export { Toaster };

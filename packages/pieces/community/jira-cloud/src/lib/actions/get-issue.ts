@@ -1,0 +1,157 @@
+import { createAction, Property } from '@activepieces/pieces-framework';
+import { jiraCloudAuth } from '../../auth';
+import { HttpMethod, QueryParams } from '@activepieces/pieces-common';
+import { mapFieldNames, sendJiraRequest } from '../common';
+import { getIssueIdDropdown, getProjectIdDropdown } from '../common/props';
+
+import { issueOutputSchema } from '../output-schemas';
+export const getIssueAction = createAction({
+  auth: jiraCloudAuth,
+  name: 'get_issue',
+  classification: 'READ',
+  displayName: 'Get Issue',
+  description: "Gets an issue's fields and details.",
+  audience: 'human',
+  aiMetadata: {
+    description:
+      'Fetch a single Jira issue by project and issue, optionally expanding extras like rendered fields, transitions, edit metadata, or changelog, and optionally remapping cryptic field/transition IDs to human-readable names. Use when you know which issue you want; to find issues by criteria use Search Issues instead. Read-only and idempotent.',
+    idempotent: true,
+  },
+  outputSchema: issueOutputSchema,
+  propertyGroups: [
+    {
+      key: 'issue',
+      display: 'section',
+      label: 'Issue',
+      icon: 'inbox',
+      props: ['projectId', 'issueId'],
+    },
+    {
+      key: 'output',
+      display: 'section',
+      label: 'Output',
+      icon: 'sliders',
+      props: ['expand', 'mapNames', 'mapTransitions'],
+    },
+  ],
+  props: {
+    projectId: getProjectIdDropdown(),
+    issueId: getIssueIdDropdown({ refreshers: ['projectId'] }),
+    expand: Property.StaticMultiSelectDropdown({
+      displayName: 'Extra Data',
+      description: 'More sections to include in the output.',
+      required: false,
+      options: {
+        options: [
+          {
+            label: 'Rendered Fields',
+            value: 'renderedFields',
+          },
+          {
+            label: 'Names',
+            value: 'names',
+          },
+          {
+            label: 'Schema',
+            value: 'schema',
+          },
+          {
+            label: 'Transitions',
+            value: 'transitions',
+          },
+          {
+            label: 'Edit Meta',
+            value: 'editmeta',
+          },
+          {
+            label: 'Changelog',
+            value: 'changelog',
+          },
+        ],
+      },
+    }),
+    mapNames: Property.Checkbox({
+      displayName: 'Map Field Names',
+      description: 'Key fields by their name instead of their ID.',
+      required: false,
+      defaultValue: false,
+    }),
+    mapTransitions: Property.Checkbox({
+      displayName: 'Map Transition Names',
+      description: "Adds the issue's transitions, keyed by name.",
+      required: false,
+      defaultValue: false,
+    }),
+  },
+  async run(context) {
+    const { issueId, expand, mapNames, mapTransitions } = context.propsValue;
+
+    const queryParams = {} as QueryParams;
+    let expandParams = expand as string[];
+
+    // implicitly expand names which is needed for mapping
+    if (mapNames) {
+      expandParams = [...new Set(expandParams).add('names')];
+    }
+
+    if (mapTransitions) {
+      expandParams = [...new Set(expandParams).add('transitions')];
+    }
+
+    if (expandParams) {
+      queryParams['expand'] = expandParams.join(',');
+    }
+
+    // https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/#api-rest-api-3-issue-issueidorkey-get
+    const response = await sendJiraRequest({
+      method: HttpMethod.GET,
+      url: `issue/${issueId}`,
+      auth: context.auth,
+      queryParams: queryParams,
+    });
+
+    const data = response.body;
+
+    if (mapNames) {
+      const fieldNames = data.names || {};
+
+      const mappedFields = mapFieldNames(data.fields, fieldNames);
+      data['fields'] = mappedFields;
+
+      if (data.renderedFields) {
+        const mappedRenderedFields = mapFieldNames(
+          data.renderedFields,
+          fieldNames
+        );
+        data['renderedFields'] = mappedRenderedFields;
+      }
+
+      if (data.schema) {
+        const mappedSchemaFields = mapFieldNames(data.schema, fieldNames);
+        data['schema'] = mappedSchemaFields;
+      }
+
+      if (data.editmeta?.fields) {
+        const mappedEditmetaFields = mapFieldNames(
+          data.editmeta.fields,
+          fieldNames
+        );
+        data['editmeta']['fields'] = mappedEditmetaFields;
+      }
+    }
+
+    if (mapTransitions && data.transitions) {
+      const mappedTransitions = data.transitions.reduce(
+        (acc: Record<string, any>, transition: any) => {
+          acc[transition.name] = transition;
+          return acc;
+        },
+        {}
+      );
+
+      data['transitions'] = mappedTransitions;
+    }
+
+    return data;
+  },
+});
