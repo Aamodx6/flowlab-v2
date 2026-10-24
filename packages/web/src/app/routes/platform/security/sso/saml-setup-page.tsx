@@ -495,7 +495,7 @@ const StepSection = ({
   </section>
 );
 
-const SAML_ENTITY_ID = 'Activepieces';
+const SAML_ENTITY_ID = 'FlowLab';
 
 const Saml2FormValues = z.object({
   idpMetadata: z.string().min(1, formErrors.required),

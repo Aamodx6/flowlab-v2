@@ -43,7 +43,7 @@ const ApiKeysPage = () => {
     <AdminPage width="content">
       <AdminPageHeader
         title={t('API Keys')}
-        description={t('Manage API keys to access Activepieces APIs.')}
+        description={t('Manage API keys to access FlowLab APIs.')}
         resources={adminPageResources.apiKeys}
       >
         <NewApiKeyDialog onCreate={() => refetch()}>

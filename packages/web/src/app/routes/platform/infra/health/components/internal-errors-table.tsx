@@ -32,7 +32,7 @@ export function InternalErrorsTable({
     <SettingsPanel
       title={t('Internal errors — impact')}
       description={t(
-        'Internal errors are failures inside Activepieces itself (engine or worker), not in your flow logic. Grouped by the project and flow they affected.',
+        'Internal errors are failures inside FlowLab itself (engine or worker), not in your flow logic. Grouped by the project and flow they affected.',
       )}
       action={
         total > 0 ? (

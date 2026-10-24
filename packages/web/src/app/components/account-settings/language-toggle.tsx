@@ -61,9 +61,9 @@ export const LanguageToggle = () => {
             className="text-accent-11 hover:underline"
             rel="noopener noreferrer"
             target="_blank"
-            to="https://www.activepieces.com/docs/about/i18n"
+            to="https://github.com/Aamodx6/flowlab-v2"
           >
-            {t('Help translate Activepieces →')}
+            {t('Help translate FlowLab →')}
           </Link>
         ) : undefined
       }

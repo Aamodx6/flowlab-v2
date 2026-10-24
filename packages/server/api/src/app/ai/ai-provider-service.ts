@@ -502,7 +502,7 @@ async function ensureManagedProviderRow({ platformId }: { platformId: PlatformId
             auth: await encryptUtils.encryptObject({}),
             config: {},
             provider: AIProviderName.ACTIVEPIECES,
-            displayName: 'Activepieces',
+            displayName: 'FlowLab',
             platformId,
             modelScope: 'all',
             modelIds: [],

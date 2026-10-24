@@ -99,7 +99,7 @@ export const EmbeddedMcpAuthorizeDialog = () => {
           </DialogTitle>
           <DialogDescription className="text-center">
             <span className="font-semibold text-gray-12">{clientName}</span>{' '}
-            {t('wants to connect to your Activepieces account')}
+            {t('wants to connect to your FlowLab account')}
           </DialogDescription>
         </DialogHeader>
 

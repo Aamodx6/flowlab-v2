@@ -130,7 +130,7 @@ function buildCostItems({
   includeActivepiecesModels: boolean;
   chatEnabled: boolean;
 }): CostItem[] {
-  const modelByActivepieces = t('Model by Activepieces');
+  const modelByActivepieces = t('Model by FlowLab');
   const execution: CostItem[] = [
     { kind: 'section', label: t('Execution') },
     { kind: 'row', action: t('Flow run'), credits: '1' },
@@ -153,7 +153,7 @@ function buildCostItems({
     {
       kind: 'row',
       action: t('AI step'),
-      sub: t('Activepieces AI — non 3rd-party ai i.e OpenAI'),
+      sub: t('FlowLab AI — non 3rd-party ai i.e OpenAI'),
       credits: t('see below'),
     },
     {
@@ -167,7 +167,7 @@ function buildCostItems({
     ? [
         {
           kind: 'row',
-          action: t('Activepieces AI'),
+          action: t('FlowLab AI'),
           sub: modelByActivepieces,
           credits: t('what the call costs'),
         },
@@ -197,14 +197,14 @@ function buildFaqs({
     {
       question: t('What are credits?'),
       answer: t(
-        'Credits are the unit used to measure your usage on Activepieces. Every action you run consumes a certain number of credits depending on what it does.',
+        'Credits are the unit used to measure your usage on FlowLab. Every action you run consumes a certain number of credits depending on what it does.',
       ),
     },
     {
       question: t('How are credits consumed?'),
       answer: (
         <div className="flex flex-col gap-2.5">
-          <span>{t("Here's what each action in Activepieces costs:")}</span>
+          <span>{t("Here's what each action in FlowLab costs:")}</span>
           <CreditsCostTable
             includeActivepiecesModels={isCloud}
             chatEnabled={chatEnabled}
@@ -215,7 +215,7 @@ function buildFaqs({
     {
       question: t('What is BYOK?'),
       answer: t(
-        'BYOK stands for Bring Your Own Key. You connect your own AI provider API key, and Activepieces charges only 1 credit per call instead of the full model cost.',
+        'BYOK stands for Bring Your Own Key. You connect your own AI provider API key, and FlowLab charges only 1 credit per call instead of the full model cost.',
       ),
     },
     {

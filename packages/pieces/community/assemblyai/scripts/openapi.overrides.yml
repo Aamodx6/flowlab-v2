@@ -10,7 +10,7 @@ components:
   schemas:
     TranscriptOptionalParams:
       properties:
-        # use JSON as array with a nested array isn't supported for input in Active Pieces
+        # use JSON as array with a nested array isn't supported for input in FlowLab
         custom_spelling:
           description: |
             Customize how words are spelled and formatted using to and from values.

@@ -18,11 +18,11 @@ export const eventNewRegistration = createSessionsUsWebhookTrigger({
     registeredParticipant: {
       id: '5164d6de-5f72-4990-8a42-8b5c9b7d5670',
       email: 'email@example.com',
-      firstName: 'Active Pieces',
+      firstName: 'FlowLab',
       form: [
         {
           question: 'Name',
-          answer: 'Active Pieces',
+          answer: 'FlowLab',
         },
         {
           question: 'Email',

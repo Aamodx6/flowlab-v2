@@ -189,7 +189,7 @@ function planCatalog(): PlanCatalogEntry[] {
         {
           label: t('MCPs and API access'),
           tooltip: t(
-            'Serve your tools to any AI assistant over MCP, and manage Activepieces from your own code over the API.',
+            'Serve your tools to any AI assistant over MCP, and manage FlowLab from your own code over the API.',
           ),
         },
       ],

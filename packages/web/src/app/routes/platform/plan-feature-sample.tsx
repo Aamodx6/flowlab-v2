@@ -94,7 +94,7 @@ const PLAN_FEATURE_SAMPLES: Record<PlanFeature, PlanFeatureSampleSpec> = {
     teaser: {
       featureKey: 'API',
       title: 'Enable API Keys',
-      description: 'Create and manage API keys to access Activepieces APIs.',
+      description: 'Create and manage API keys to access FlowLab APIs.',
       tier: 'team',
     },
   },

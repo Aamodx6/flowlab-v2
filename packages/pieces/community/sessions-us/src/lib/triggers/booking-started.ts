@@ -15,7 +15,7 @@ export const bookingStarted = createSessionsUsWebhookTrigger({
   sampleData: {
     session: {
       id: '2f8547a5-5c36-49ea-bc21-c61e337d89a3',
-      name: 'Talk with Active Pieces',
+      name: 'Talk with FlowLab',
       description: '',
       quickSession: false,
       room: null,
@@ -25,8 +25,8 @@ export const bookingStarted = createSessionsUsWebhookTrigger({
       endedAt: null,
       booking: {
         id: '3df6dbdb-9a6c-41e6-89b2-d7a38233163e',
-        name: 'Talk with Active Pieces',
-        participantName: 'Active Pieces',
+        name: 'Talk with FlowLab',
+        participantName: 'FlowLab',
         participantEmail: 'example@gmail.com',
         guests: [],
       },
@@ -39,7 +39,7 @@ export const bookingStarted = createSessionsUsWebhookTrigger({
             id: '529e6bc0-af38-4365-a0b2-5530d8207ecb',
             email: 'example@gmail.com',
             lastName: null,
-            firstName: 'Active Pieces',
+            firstName: 'FlowLab',
           },
           user: null,
         },
